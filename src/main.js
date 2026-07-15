@@ -170,8 +170,15 @@ function initCytoscape() {
   // Salva posições após arrastar
   cy.on("dragfree", "node", persist);
 
-  // Marcadores de "X" seguem o ponto médio da aresta quando os nós se movem.
-  cy.on("position drag", "node", () => positionXMarkers());
+  // Durante o arraste de um nó, os marcadores de "X" seguem o meio da aresta
+  // via requestAnimationFrame. IMPORTANTE: não usar os eventos "position"/"drag"
+  // para isso — chamar .position() dentro deles reentra no processamento de
+  // arraste do Cytoscape e faz o nó arrastado "disparar" (efeito cumulativo).
+  cy.on("grab", "node", () => pulseXMarkers(0));
+  cy.on("free", "node", () => {
+    stopXMarkerPulse();
+    positionXMarkers();
+  });
 }
 
 /* =========================================================================
@@ -191,15 +198,24 @@ function positionXMarkers() {
   });
 }
 
-/** Mantém os X sincronizados durante a animação do layout. */
+/**
+ * Sincroniza os X via requestAnimationFrame.
+ * - durationMs > 0: roda por um tempo (usado na animação do layout).
+ * - durationMs = 0: roda indefinidamente até stopXMarkerPulse() (usado no arraste).
+ */
 function pulseXMarkers(durationMs) {
   cancelAnimationFrame(xMarkerPulse);
-  const end = performance.now() + durationMs;
+  const end = durationMs > 0 ? performance.now() + durationMs : Infinity;
   const tick = (now) => {
     positionXMarkers();
     if (now < end) xMarkerPulse = requestAnimationFrame(tick);
   };
   xMarkerPulse = requestAnimationFrame(tick);
+}
+
+function stopXMarkerPulse() {
+  cancelAnimationFrame(xMarkerPulse);
+  xMarkerPulse = null;
 }
 
 /**
