@@ -323,25 +323,6 @@ button.ghost {
   background-size: 22px 22px;
 }
 
-/* Sobreposição para os "X" vermelhos das relações removidas */
-#x-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 5;
-}
-
-#x-overlay .xmark {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  color: #dc2626;
-  font-weight: 900;
-  line-height: 1;
-  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
-  user-select: none;
-}
-
 /* ---------- Inspector ---------- */
 .inspector {
   position: absolute;

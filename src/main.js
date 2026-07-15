@@ -114,6 +114,27 @@ function buildStylesheet() {
       style: { opacity: 0.45 },
     },
     {
+      // Marcador de X vermelho no meio das relações removidas.
+      selector: "node[?isXmark]",
+      style: {
+        label: "✕",
+        shape: "ellipse",
+        width: 26,
+        height: 26,
+        "background-opacity": 0,
+        "border-width": 0,
+        color: "#dc2626",
+        "font-size": 30,
+        "font-weight": 900,
+        "text-valign": "center",
+        "text-halign": "center",
+        "text-outline-width": 3,
+        "text-outline-color": "#ffffff",
+        events: "no",
+        "z-index": 999,
+      },
+    },
+    {
       selector: ":selected",
       style: { "border-width": 4, "border-color": "#f59e0b", "line-color": "#f59e0b" },
     },
@@ -131,84 +152,54 @@ function initCytoscape() {
     wheelSensitivity: 0.2,
     minZoom: 0.1,
     maxZoom: 3,
-    // Força pixelRatio inteiro: evita bug de renderização do Cytoscape
-    // com devicePixelRatio fracionário (ex.: Windows com escala de 125% -> 1.25),
-    // em que parte dos nós/arestas deixa de ser pintada após um re-render.
-    pixelRatio: 1,
+    // Observação: NÃO forçar pixelRatio. Em telas com escala fracionária
+    // (ex.: Windows 125% -> devicePixelRatio 1.25), fixar pixelRatio:1 fazia
+    // os nós "andarem" mais que o cursor ao arrastar. O bug de pintura que
+    // motivou aquilo já é resolvido pelo dimensionamento explícito dos nós.
     textureOnViewport: false,
     motionBlur: false,
   });
 
-  cy.on("tap", "node, edge", (evt) => openInspector(evt.target));
+  cy.on("tap", "node, edge", (evt) => {
+    if (evt.target.data("isXmark")) return;
+    openInspector(evt.target);
+  });
   cy.on("tap", (evt) => {
     if (evt.target === cy) closeInspector();
   });
   // Salva posições após arrastar
   cy.on("dragfree", "node", persist);
 
-  // Sobreposição dos "X" das relações removidas — mantida em sincronia com o canvas.
-  xOverlay = document.createElement("div");
-  xOverlay.id = "x-overlay";
-  document.getElementById("cy").appendChild(xOverlay);
-  cy.on("pan zoom resize render", syncXOverlay);
-  cy.on("position drag", "node", syncXOverlay);
-  window.addEventListener("resize", syncXOverlay);
+  // Marcadores de "X" seguem o ponto médio da aresta quando os nós se movem.
+  cy.on("position drag", "node", () => positionXMarkers());
 }
 
 /* =========================================================================
- *  Marcadores de "X" (relações removidas)
+ *  Marcadores de "X" (relações removidas) — nós do próprio grafo,
+ *  para que apareçam também nas exportações PNG/SVG.
  * ========================================================================= */
-let xOverlay = null;
-let xAnimPulse = null;
+let xMarkerPulse = null;
 
-/** (Re)cria os elementos de "X" para cada relação removida. */
-function refreshXOverlay() {
-  if (!xOverlay) return;
-  xOverlay.innerHTML = "";
-  for (const e of state.edges) {
-    if (e.estado !== "removida") continue;
-    const span = document.createElement("span");
-    span.className = "xmark";
-    span.dataset.edge = e.id;
-    span.textContent = "✕";
-    xOverlay.appendChild(span);
-  }
-  syncXOverlay();
-}
-
-/** Reposiciona os "X" sobre o ponto médio de cada aresta removida. */
-function syncXOverlay() {
-  if (!xOverlay || !cy) return;
-  const zoom = cy.zoom();
-  const pan = cy.pan();
-  const fontSize = Math.max(14, Math.round(30 * zoom));
-  xOverlay.querySelectorAll(".xmark").forEach((span) => {
-    const edge = cy.getElementById(span.dataset.edge);
-    if (!edge || edge.empty()) {
-      span.style.display = "none";
-      return;
-    }
+/** Reposiciona cada marcador de X sobre o ponto médio de sua aresta. */
+function positionXMarkers() {
+  if (!cy) return;
+  cy.nodes("[?isXmark]").forEach((mk) => {
+    const edge = cy.getElementById(mk.data("forEdge"));
+    if (edge.empty()) return;
     const mid = edge.midpoint();
-    if (!mid || Number.isNaN(mid.x)) {
-      span.style.display = "none";
-      return;
-    }
-    span.style.display = "block";
-    span.style.left = mid.x * zoom + pan.x + "px";
-    span.style.top = mid.y * zoom + pan.y + "px";
-    span.style.fontSize = fontSize + "px";
+    if (mid && !Number.isNaN(mid.x)) mk.position(mid);
   });
 }
 
-/** Mantém os X sincronizados durante uma animação de layout. */
-function pulseXOverlaySync(durationMs) {
-  cancelAnimationFrame(xAnimPulse);
+/** Mantém os X sincronizados durante a animação do layout. */
+function pulseXMarkers(durationMs) {
+  cancelAnimationFrame(xMarkerPulse);
   const end = performance.now() + durationMs;
   const tick = (now) => {
-    syncXOverlay();
-    if (now < end) xAnimPulse = requestAnimationFrame(tick);
+    positionXMarkers();
+    if (now < end) xMarkerPulse = requestAnimationFrame(tick);
   };
-  xAnimPulse = requestAnimationFrame(tick);
+  xMarkerPulse = requestAnimationFrame(tick);
 }
 
 /**
@@ -261,6 +252,16 @@ function toElements() {
       },
     });
   }
+  // Marcadores de X para relações removidas (nós auxiliares, não interativos).
+  for (const e of state.edges) {
+    if (e.estado !== "removida") continue;
+    els.push({
+      data: { id: "x_" + e.id, isXmark: true, forEdge: e.id },
+      selectable: false,
+      grabbable: false,
+      pannable: true,
+    });
+  }
   return els;
 }
 
@@ -282,25 +283,34 @@ function render({ layout = false } = {}) {
 
   const semPosicao = state.nodes.some((n) => n.x == null || n.y == null);
   if (layout || semPosicao) runLayout();
-  else cy.fit(undefined, 40);
+  else {
+    positionXMarkers();
+    cy.fit(cy.elements("[!isXmark]"), 40);
+    positionXMarkers();
+  }
 }
 
 function runLayout() {
-  cy.layout({
-    name: "fcose",
-    quality: "proof",
-    animate: true,
-    animationDuration: 500,
-    randomize: state.nodes.every((n) => n.x == null),
-    nodeSeparation: 120,
-    idealEdgeLength: 140,
-    nodeRepulsion: 8000,
-    padding: 40,
-    fit: true,
-  }).run();
+  // Layout roda apenas nos elementos reais; os marcadores de X (nós soltos)
+  // ficariam espalhados pelo fcose, então são posicionados manualmente depois.
+  cy.elements("[!isXmark]")
+    .layout({
+      name: "fcose",
+      quality: "proof",
+      animate: true,
+      animationDuration: 500,
+      randomize: state.nodes.every((n) => n.x == null),
+      nodeSeparation: 120,
+      idealEdgeLength: 140,
+      nodeRepulsion: 8000,
+      padding: 40,
+      fit: true,
+    })
+    .run();
+  pulseXMarkers(700);
 
   cy.one("layoutstop", () => {
-    cy.nodes().forEach((n) => {
+    cy.nodes("[!isXmark]").forEach((n) => {
       const s = state.nodes.find((x) => x.id === n.id());
       if (s) {
         const p = n.position();
@@ -308,6 +318,7 @@ function runLayout() {
         s.y = p.y;
       }
     });
+    positionXMarkers();
     cy.forceRender();
     persist();
   });
