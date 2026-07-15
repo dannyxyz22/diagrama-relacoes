@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diagrama de Relações — Editor de Grafos</title>
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <header class="brand">
+          <h1>Diagrama de Relações</h1>
+          <p class="subtitle">Atores, relações e diagramação automática</p>
+        </header>
+
+        <nav class="tabs">
+          <button class="tab-btn active" data-tab="atores">Atores</button>
+          <button class="tab-btn" data-tab="relacoes">Relações</button>
+          <button class="tab-btn" data-tab="grupos">Grupos</button>
+        </nav>
+
+        <!-- ATORES -->
+        <section class="tab-panel active" data-panel="atores">
+          <form id="form-ator" class="card">
+            <h2>Novo ator (nó)</h2>
+            <label>Nome
+              <input type="text" id="ator-nome" placeholder="Ex.: LARANJA" required />
+            </label>
+            <label>Grupo (opcional)
+              <select id="ator-grupo"></select>
+            </label>
+            <div class="row">
+              <label>Cor
+                <input type="color" id="ator-cor" value="#2C5F8A" />
+              </label>
+              <label>Formato
+                <select id="ator-forma">
+                  <option value="ellipse">Elipse</option>
+                  <option value="round-rectangle">Retângulo</option>
+                  <option value="diamond">Losango</option>
+                  <option value="hexagon">Hexágono</option>
+                </select>
+              </label>
+            </div>
+            <button type="submit" class="primary">Adicionar ator</button>
+          </form>
+
+          <div class="card">
+            <h2>Atores <span class="count" id="count-atores">0</span></h2>
+            <ul id="lista-atores" class="lista"></ul>
+          </div>
+        </section>
+
+        <!-- RELAÇÕES -->
+        <section class="tab-panel" data-panel="relacoes">
+          <form id="form-relacao" class="card">
+            <h2>Nova relação (aresta)</h2>
+            <label>Origem
+              <select id="rel-origem" required></select>
+            </label>
+            <label>Destino
+              <select id="rel-destino" required></select>
+            </label>
+            <label>Rótulo
+              <input type="text" id="rel-label" placeholder="Ex.: APOIO" />
+            </label>
+            <label>Tipo de relação
+              <select id="rel-tipo"></select>
+            </label>
+            <div class="row">
+              <label>Cor
+                <input type="color" id="rel-cor" value="#2B6CB0" />
+              </label>
+              <label>Estilo
+                <select id="rel-estilo">
+                  <option value="solid">Sólida</option>
+                  <option value="dashed">Tracejada</option>
+                  <option value="dotted">Pontilhada</option>
+                </select>
+              </label>
+            </div>
+            <label>Situação
+              <select id="rel-estado">
+                <option value="normal">Normal</option>
+                <option value="reforcada">Reforçada (linha mais grossa)</option>
+                <option value="removida">Removida (X vermelho)</option>
+              </select>
+            </label>
+            <label class="check">
+              <input type="checkbox" id="rel-bidir" /> Bidirecional (seta nos dois lados)
+            </label>
+            <button type="submit" class="primary">Adicionar relação</button>
+          </form>
+
+          <div class="card">
+            <h2>Relações <span class="count" id="count-relacoes">0</span></h2>
+            <ul id="lista-relacoes" class="lista"></ul>
+          </div>
+        </section>
+
+        <!-- GRUPOS -->
+        <section class="tab-panel" data-panel="grupos">
+          <form id="form-grupo" class="card">
+            <h2>Novo grupo (blob)</h2>
+            <p class="hint">Grupos agrupam atores num "blob" (ex.: PAÍS AZUL).</p>
+            <label>Nome do grupo
+              <input type="text" id="grupo-nome" placeholder="Ex.: PAÍS AZUL" required />
+            </label>
+            <label>Cor de fundo
+              <input type="color" id="grupo-cor" value="#EAF4EA" />
+            </label>
+            <button type="submit" class="primary">Adicionar grupo</button>
+          </form>
+
+          <div class="card">
+            <h2>Grupos <span class="count" id="count-grupos">0</span></h2>
+            <ul id="lista-grupos" class="lista"></ul>
+          </div>
+        </section>
+
+        <div class="card tipos-card">
+          <h2>Tipos de relação (legenda)</h2>
+          <ul id="lista-tipos" class="lista tipos"></ul>
+          <form id="form-tipo" class="tipo-form">
+            <input type="text" id="tipo-nome" placeholder="Nome do tipo" />
+            <input type="color" id="tipo-cor" value="#6C3483" />
+            <button type="submit" class="ghost">+</button>
+          </form>
+        </div>
+      </aside>
+
+      <main id="canvas-area">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <button id="btn-layout" class="tool">Reorganizar (auto)</button>
+            <label class="switch">
+              <input type="checkbox" id="chk-physics" checked /> Auto-organizar ao editar
+            </label>
+          </div>
+          <div class="toolbar-right">
+            <button id="btn-fit" class="tool">Enquadrar</button>
+            <button id="btn-png" class="tool">Exportar PNG</button>
+            <button id="btn-svg" class="tool">Exportar SVG</button>
+            <button id="btn-export" class="tool">Salvar JSON</button>
+            <button id="btn-import" class="tool">Abrir JSON</button>
+            <button id="btn-seed" class="tool">Exemplo</button>
+            <button id="btn-clear" class="tool danger">Limpar</button>
+            <input type="file" id="file-import" accept="application/json" hidden />
+          </div>
+        </div>
+        <div id="cy"></div>
+
+        <!-- Painel de propriedades do elemento selecionado -->
+        <div id="inspector" class="inspector hidden">
+          <div class="inspector-header">
+            <span id="inspector-title">Elemento</span>
+            <button id="inspector-close" class="icon-btn">×</button>
+          </div>
+          <div id="inspector-body"></div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
