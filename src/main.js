@@ -36,6 +36,22 @@ function clampEdgeFont(n) {
   return Math.min(EDGE_FONT_MAX, Math.max(EDGE_FONT_MIN, Math.round(v)));
 }
 
+/** Converte "\\n" literal em quebra de linha real (útil em inputs de texto). */
+function normalizeLabel(label) {
+  return String(label || "").replace(/\\n/g, "\n");
+}
+
+/** Escurece um hex mantendo o matiz (para títulos de grupo). */
+function darkenColor(hex, factor = 0.58) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(String(hex || "").trim());
+  if (!m) return "#0f172a";
+  const to = (c) =>
+    Math.max(0, Math.min(255, Math.round(parseInt(c, 16) * factor)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${to(m[1])}${to(m[2])}${to(m[3])}`;
+}
+
 /** Escalas de importância (forma + texto). */
 const SIZE_STEPS = [0.65, 0.8, 1, 1.25, 1.5, 1.8];
 const SIZE_LABELS = {
@@ -93,7 +109,8 @@ function buildStylesheet() {
         "text-valign": "center",
         "text-halign": "center",
         "text-wrap": "wrap",
-        "text-max-width": "data(textMaxWidth)",
+        // Largura alta: só quebra em \n (sem wrap automático por comprimento).
+        "text-max-width": 10000,
         shape: "data(shape)",
         // Dimensões explícitas calculadas a partir do rótulo (data.w/data.h).
         // Evita o sizing "label", que nesta versão do Cytoscape às vezes
@@ -113,11 +130,13 @@ function buildStylesheet() {
         "border-color": "data(color)",
         "border-opacity": 0.9,
         shape: "round-rectangle",
-        color: "#0f172a",
+        color: "data(labelColor)",
         "font-size": 15,
         "font-weight": 800,
         "text-valign": "top",
         "text-halign": "center",
+        "text-wrap": "wrap",
+        "text-max-width": 10000,
         "text-margin-y": 6,
         padding: "26px",
       },
@@ -137,6 +156,9 @@ function buildStylesheet() {
         color: "data(color)",
         "text-outline-width": 3,
         "text-outline-color": "#ffffff",
+        "text-wrap": "wrap",
+        "text-max-width": 10000,
+        "text-justification": "center",
         "text-rotation": "autorotate",
         "text-background-color": "#ffffff",
         "text-background-opacity": 0.75,
@@ -289,7 +311,6 @@ function nodeSize(label, shape, size = 1) {
     w: Math.max(w, Math.round(56 * scale)),
     h: Math.max(h, Math.round(40 * scale)),
     fontSize,
-    textMaxWidth: Math.round(160 * scale),
     outlineW: Math.max(1, Math.round(2 * scale)),
     borderW: Math.max(1, Math.round(2 * scale)),
   };
@@ -298,23 +319,31 @@ function nodeSize(label, shape, size = 1) {
 function toElements() {
   const els = [];
   for (const g of state.groups) {
-    els.push({ data: { id: g.id, label: g.name, isGroup: true, color: g.color } });
+    els.push({
+      data: {
+        id: g.id,
+        label: normalizeLabel(g.name),
+        isGroup: true,
+        color: g.color,
+        labelColor: darkenColor(g.color),
+      },
+    });
   }
   for (const n of state.nodes) {
-    const { w, h, fontSize, textMaxWidth, outlineW, borderW } = nodeSize(
-      n.name,
+    const label = normalizeLabel(n.name);
+    const { w, h, fontSize, outlineW, borderW } = nodeSize(
+      label,
       n.shape || "ellipse",
       n.size
     );
     const data = {
       id: n.id,
-      label: n.name,
+      label,
       color: n.color,
       shape: n.shape || "ellipse",
       w,
       h,
       fontSize,
-      textMaxWidth,
       outlineW,
       borderW,
     };
@@ -324,17 +353,18 @@ function toElements() {
     els.push(el);
   }
   for (const e of state.edges) {
+    const fontSize = clampEdgeFont(state.edgeFontSize);
     els.push({
       data: {
         id: e.id,
         source: e.source,
         target: e.target,
-        label: e.label || "",
+        label: normalizeLabel(e.label),
         color: e.color,
         style: e.style || "solid",
         bidir: !!e.bidir,
         estado: e.estado || "normal",
-        fontSize: clampEdgeFont(state.edgeFontSize),
+        fontSize,
       },
     });
   }
@@ -508,9 +538,9 @@ function removeGroup(id) {
 /** Resolve o nome de um endpoint (ator ou grupo) pelo id. */
 function endpointName(id) {
   const n = state.nodes.find((x) => x.id === id);
-  if (n) return n.name.replace(/\n/g, " ");
+  if (n) return normalizeLabel(n.name).replace(/\n/g, " ");
   const g = state.groups.find((x) => x.id === id);
-  if (g) return `[Grupo] ${g.name.replace(/\n/g, " ")}`;
+  if (g) return `[Grupo] ${normalizeLabel(g.name).replace(/\n/g, " ")}`;
   return "?";
 }
 
@@ -557,7 +587,7 @@ function fillEndpointSelect(sel, selected) {
   for (const n of state.nodes) {
     const o = document.createElement("option");
     o.value = n.id;
-    o.textContent = n.name.replace(/\n/g, " ");
+    o.textContent = normalizeLabel(n.name).replace(/\n/g, " ");
     atores.appendChild(o);
   }
   if (state.nodes.length) sel.appendChild(atores);
@@ -567,7 +597,7 @@ function fillEndpointSelect(sel, selected) {
   for (const g of state.groups) {
     const o = document.createElement("option");
     o.value = g.id;
-    o.textContent = g.name.replace(/\n/g, " ");
+    o.textContent = normalizeLabel(g.name).replace(/\n/g, " ");
     grupos.appendChild(o);
   }
   if (state.groups.length) sel.appendChild(grupos);
@@ -608,11 +638,11 @@ function refreshListaAtores() {
   for (const n of state.nodes) {
     const g = state.groups.find((x) => x.id === n.group);
     const parts = [sizeLabel(n.size)];
-    if (g) parts.push(g.name);
+    if (g) parts.push(normalizeLabel(g.name).replace(/\n/g, " "));
     ul.appendChild(
       liItem({
         color: n.color,
-        label: n.name,
+        label: normalizeLabel(n.name).replace(/\n/g, " "),
         sub: parts.join(" · "),
         onFocus: () => focusNode(n.id),
         onShrink: () => {
@@ -664,7 +694,7 @@ function refreshListaGrupos() {
     ul.appendChild(
       liItem({
         color: g.color,
-        label: g.name,
+        label: normalizeLabel(g.name).replace(/\n/g, " "),
         sub: `${membros} ator(es)`,
         onDelete: () => {
           removeGroup(g.id);
