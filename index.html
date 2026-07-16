@@ -42,6 +42,16 @@
                 </select>
               </label>
             </div>
+            <label>Tamanho / importância
+              <select id="ator-tamanho">
+                <option value="0.65">Muito pequeno</option>
+                <option value="0.8">Pequeno</option>
+                <option value="1" selected>Normal</option>
+                <option value="1.25">Grande</option>
+                <option value="1.5">Muito grande</option>
+                <option value="1.8">Enorme</option>
+              </select>
+            </label>
             <button type="submit" class="primary">Adicionar ator</button>
           </form>
 
@@ -136,6 +146,12 @@
             <label class="switch">
               <input type="checkbox" id="chk-physics" checked /> Auto-organizar ao editar
             </label>
+            <div class="edge-font-ctrl" title="Tamanho global do texto das relações">
+              <span class="edge-font-title">Fonte arestas</span>
+              <button type="button" id="btn-edge-font-minus" class="tool size-tool">−</button>
+              <span id="edge-font-label" class="edge-font-label">11</span>
+              <button type="button" id="btn-edge-font-plus" class="tool size-tool">+</button>
+            </div>
           </div>
           <div class="toolbar-right">
             <button id="btn-fit" class="tool">Enquadrar</button>

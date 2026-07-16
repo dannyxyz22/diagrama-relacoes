@@ -20,10 +20,54 @@ const TIPOS_PADRAO = [
 
 const state = {
   groups: [], // { id, name, color }
-  nodes: [], // { id, name, group, color, shape }
+  nodes: [], // { id, name, group, color, shape, size }
   edges: [], // { id, source, target, label, color, style, bidir }
   types: structuredClone(TIPOS_PADRAO),
+  edgeFontSize: 11,
 };
+
+const EDGE_FONT_MIN = 8;
+const EDGE_FONT_MAX = 22;
+const EDGE_FONT_DEFAULT = 11;
+
+function clampEdgeFont(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return EDGE_FONT_DEFAULT;
+  return Math.min(EDGE_FONT_MAX, Math.max(EDGE_FONT_MIN, Math.round(v)));
+}
+
+/** Escalas de importância (forma + texto). */
+const SIZE_STEPS = [0.65, 0.8, 1, 1.25, 1.5, 1.8];
+const SIZE_LABELS = {
+  0.65: "Muito pequeno",
+  0.8: "Pequeno",
+  1: "Normal",
+  1.25: "Grande",
+  1.5: "Muito grande",
+  1.8: "Enorme",
+};
+
+function clampSize(s) {
+  const n = Number(s);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(SIZE_STEPS[SIZE_STEPS.length - 1], Math.max(SIZE_STEPS[0], Math.round(n * 100) / 100));
+}
+
+function nearestSizeStep(s) {
+  const v = clampSize(s);
+  return SIZE_STEPS.reduce((best, step) => (Math.abs(step - v) < Math.abs(best - v) ? step : best), SIZE_STEPS[0]);
+}
+
+function stepSize(current, dir) {
+  const cur = nearestSizeStep(current ?? 1);
+  const idx = SIZE_STEPS.indexOf(cur);
+  return SIZE_STEPS[Math.min(SIZE_STEPS.length - 1, Math.max(0, idx + dir))];
+}
+
+function sizeLabel(s) {
+  const step = nearestSizeStep(s ?? 1);
+  return SIZE_LABELS[step] || "Normal";
+}
 
 let cy;
 let idSeq = 1;
@@ -42,20 +86,21 @@ function buildStylesheet() {
         "border-width": 2,
         "border-color": "#ffffff",
         color: "#ffffff",
-        "text-outline-width": 2,
+        "text-outline-width": "data(outlineW)",
         "text-outline-color": "data(color)",
-        "font-size": 14,
+        "font-size": "data(fontSize)",
         "font-weight": 700,
         "text-valign": "center",
         "text-halign": "center",
         "text-wrap": "wrap",
-        "text-max-width": "160px",
+        "text-max-width": "data(textMaxWidth)",
         shape: "data(shape)",
         // Dimensões explícitas calculadas a partir do rótulo (data.w/data.h).
         // Evita o sizing "label", que nesta versão do Cytoscape às vezes
         // deixa nós sem serem pintados após um re-render/layout.
         width: "data(w)",
         height: "data(h)",
+        "border-width": "data(borderW)",
       },
     },
     {
@@ -87,7 +132,7 @@ function buildStylesheet() {
         "target-arrow-shape": "triangle",
         "curve-style": "bezier",
         "line-style": "data(style)",
-        "font-size": 11,
+        "font-size": "data(fontSize)",
         "font-weight": 600,
         color: "data(color)",
         "text-outline-width": 3,
@@ -219,17 +264,19 @@ function stopXMarkerPulse() {
 }
 
 /**
- * Calcula dimensões explícitas do nó a partir do rótulo.
+ * Calcula dimensões explícitas do nó a partir do rótulo e da escala de importância.
  * Substitui o sizing "label" do Cytoscape (instável nesta versão) por
  * valores numéricos estáveis, mantendo o ajuste automático ao texto.
  */
-function nodeSize(label, shape) {
+function nodeSize(label, shape, size = 1) {
+  const scale = nearestSizeStep(size);
   const lines = String(label || "").split("\n");
   const maxChars = Math.max(1, ...lines.map((l) => l.length));
-  const charW = 8.6; // ~14px Arial bold
-  const lineH = 18;
-  let w = Math.round(maxChars * charW) + 34;
-  let h = lines.length * lineH + 24;
+  const fontSize = Math.round(14 * scale);
+  const charW = 8.6 * scale; // ~14px Arial bold, proporcional à escala
+  const lineH = 18 * scale;
+  let w = Math.round(maxChars * charW) + Math.round(34 * scale);
+  let h = Math.round(lines.length * lineH + 24 * scale);
   // Elipses precisam de mais folga para o texto caber dentro da curva.
   if (shape === "ellipse") {
     w = Math.round(w * 1.25);
@@ -238,7 +285,14 @@ function nodeSize(label, shape) {
     w = Math.round(w * 1.5);
     h = Math.round(h * 1.6);
   }
-  return { w: Math.max(w, 56), h: Math.max(h, 40) };
+  return {
+    w: Math.max(w, Math.round(56 * scale)),
+    h: Math.max(h, Math.round(40 * scale)),
+    fontSize,
+    textMaxWidth: Math.round(160 * scale),
+    outlineW: Math.max(1, Math.round(2 * scale)),
+    borderW: Math.max(1, Math.round(2 * scale)),
+  };
 }
 
 function toElements() {
@@ -247,8 +301,23 @@ function toElements() {
     els.push({ data: { id: g.id, label: g.name, isGroup: true, color: g.color } });
   }
   for (const n of state.nodes) {
-    const { w, h } = nodeSize(n.name, n.shape || "ellipse");
-    const data = { id: n.id, label: n.name, color: n.color, shape: n.shape || "ellipse", w, h };
+    const { w, h, fontSize, textMaxWidth, outlineW, borderW } = nodeSize(
+      n.name,
+      n.shape || "ellipse",
+      n.size
+    );
+    const data = {
+      id: n.id,
+      label: n.name,
+      color: n.color,
+      shape: n.shape || "ellipse",
+      w,
+      h,
+      fontSize,
+      textMaxWidth,
+      outlineW,
+      borderW,
+    };
     if (n.group && state.groups.some((g) => g.id === n.group)) data.parent = n.group;
     const el = { data };
     if (n.x != null && n.y != null) el.position = { x: n.x, y: n.y };
@@ -265,6 +334,7 @@ function toElements() {
         style: e.style || "solid",
         bidir: !!e.bidir,
         estado: e.estado || "normal",
+        fontSize: clampEdgeFont(state.edgeFontSize),
       },
     });
   }
@@ -366,6 +436,7 @@ function serialize() {
     nodes: state.nodes,
     edges: state.edges,
     types: state.types,
+    edgeFontSize: clampEdgeFont(state.edgeFontSize),
     idSeq,
   };
 }
@@ -383,9 +454,13 @@ function loadFromStorage() {
 
 function applyData(data) {
   state.groups = data.groups || [];
-  state.nodes = data.nodes || [];
+  state.nodes = (data.nodes || []).map((n) => ({
+    ...n,
+    size: nearestSizeStep(n.size ?? 1),
+  }));
   state.edges = data.edges || [];
   state.types = data.types && data.types.length ? data.types : structuredClone(TIPOS_PADRAO);
+  state.edgeFontSize = clampEdgeFont(data.edgeFontSize ?? EDGE_FONT_DEFAULT);
   idSeq = data.idSeq || idSeq;
 }
 
@@ -398,8 +473,15 @@ function addGroup(name, color) {
   return g;
 }
 
-function addNode({ name, group, color, shape }) {
-  const n = { id: uid("n"), name, group: group || null, color, shape };
+function addNode({ name, group, color, shape, size }) {
+  const n = {
+    id: uid("n"),
+    name,
+    group: group || null,
+    color,
+    shape,
+    size: nearestSizeStep(size ?? 1),
+  };
   state.nodes.push(n);
   return n;
 }
@@ -449,6 +531,12 @@ function refreshUI() {
   refreshListaRelacoes();
   refreshListaGrupos();
   refreshListaTipos();
+  refreshEdgeFontUI();
+}
+
+function refreshEdgeFontUI() {
+  const label = $("#edge-font-label");
+  if (label) label.textContent = String(clampEdgeFont(state.edgeFontSize));
 }
 
 function refreshGroupSelects() {
@@ -519,12 +607,22 @@ function refreshListaAtores() {
   if (!state.nodes.length) return void (ul.innerHTML = `<div class="empty">Nenhum ator ainda.</div>`);
   for (const n of state.nodes) {
     const g = state.groups.find((x) => x.id === n.group);
+    const parts = [sizeLabel(n.size)];
+    if (g) parts.push(g.name);
     ul.appendChild(
       liItem({
         color: n.color,
         label: n.name,
-        sub: g ? g.name : "",
+        sub: parts.join(" · "),
         onFocus: () => focusNode(n.id),
+        onShrink: () => {
+          n.size = stepSize(n.size, -1);
+          commit();
+        },
+        onGrow: () => {
+          n.size = stepSize(n.size, 1);
+          commit();
+        },
         onDelete: () => {
           removeNode(n.id);
           commit();
@@ -594,7 +692,7 @@ function refreshListaTipos() {
   });
 }
 
-function liItem({ color, label, sub, onFocus, onDelete }) {
+function liItem({ color, label, sub, onFocus, onDelete, onShrink, onGrow }) {
   const li = document.createElement("li");
   const sw = document.createElement("span");
   sw.className = "swatch";
@@ -609,6 +707,32 @@ function liItem({ color, label, sub, onFocus, onDelete }) {
     txt.addEventListener("click", onFocus);
   }
   li.appendChild(txt);
+
+  if (onShrink && onGrow) {
+    const ctrl = document.createElement("span");
+    ctrl.className = "size-btns";
+    const minus = document.createElement("button");
+    minus.type = "button";
+    minus.className = "icon-btn size-btn";
+    minus.textContent = "−";
+    minus.title = "Diminuir tamanho";
+    minus.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onShrink();
+    });
+    const plus = document.createElement("button");
+    plus.type = "button";
+    plus.className = "icon-btn size-btn";
+    plus.textContent = "+";
+    plus.title = "Aumentar tamanho";
+    plus.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onGrow();
+    });
+    ctrl.appendChild(minus);
+    ctrl.appendChild(plus);
+    li.appendChild(ctrl);
+  }
 
   if (onDelete) {
     const del = document.createElement("button");
@@ -662,6 +786,12 @@ function openInspector(el) {
       field(
         "Grupo",
         selectGroup(node.group, (v) => (node.group = v || null))
+      )
+    );
+    body.appendChild(
+      field(
+        "Tamanho / importância",
+        selectSize(node.size, (v) => (node.size = v))
       )
     );
     body.appendChild(applyBtn());
@@ -780,6 +910,18 @@ function selectGroup(value, onChange) {
   s.addEventListener("change", () => onChange(s.value));
   return s;
 }
+function selectSize(value, onChange) {
+  const s = document.createElement("select");
+  for (const step of SIZE_STEPS) {
+    const o = document.createElement("option");
+    o.value = String(step);
+    o.textContent = SIZE_LABELS[step];
+    s.appendChild(o);
+  }
+  s.value = String(nearestSizeStep(value ?? 1));
+  s.addEventListener("change", () => onChange(Number(s.value)));
+  return s;
+}
 function selectEndpoint(value, onChange) {
   const s = document.createElement("select");
   fillEndpointSelect(s, value);
@@ -853,8 +995,10 @@ function bindForms() {
       group: $("#ator-grupo").value,
       color: $("#ator-cor").value,
       shape: $("#ator-forma").value,
+      size: Number($("#ator-tamanho").value) || 1,
     });
     $("#ator-nome").value = "";
+    $("#ator-tamanho").value = "1";
     commit();
   });
 
@@ -972,6 +1116,16 @@ function bindToolbar() {
     state.groups = [];
     state.nodes = [];
     state.edges = [];
+    state.edgeFontSize = EDGE_FONT_DEFAULT;
+    commit({ layout: false });
+  });
+
+  $("#btn-edge-font-minus").addEventListener("click", () => {
+    state.edgeFontSize = clampEdgeFont(state.edgeFontSize - 1);
+    commit({ layout: false });
+  });
+  $("#btn-edge-font-plus").addEventListener("click", () => {
+    state.edgeFontSize = clampEdgeFont(state.edgeFontSize + 1);
     commit({ layout: false });
   });
 }
@@ -993,6 +1147,7 @@ function seedExample() {
   state.nodes = [];
   state.edges = [];
   state.types = structuredClone(TIPOS_PADRAO);
+  state.edgeFontSize = EDGE_FONT_DEFAULT;
 
   const AZUL = "#2B6CB0";
   const VERM = "#C53030";
