@@ -149,7 +149,7 @@ function initCytoscape() {
   cy = cytoscape({
     container: document.getElementById("cy"),
     style: buildStylesheet(),
-    wheelSensitivity: 0.2,
+    wheelSensitivity: 1,
     minZoom: 0.1,
     maxZoom: 3,
     // Observação: NÃO forçar pixelRatio. Em telas com escala fracionária
