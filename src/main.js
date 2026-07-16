@@ -420,6 +420,16 @@ function removeGroup(id) {
   state.nodes.forEach((n) => {
     if (n.group === id) n.group = null;
   });
+  state.edges = state.edges.filter((e) => e.source !== id && e.target !== id);
+}
+
+/** Resolve o nome de um endpoint (ator ou grupo) pelo id. */
+function endpointName(id) {
+  const n = state.nodes.find((x) => x.id === id);
+  if (n) return n.name.replace(/\n/g, " ");
+  const g = state.groups.find((x) => x.id === id);
+  if (g) return `[Grupo] ${g.name.replace(/\n/g, " ")}`;
+  return "?";
 }
 
 function removeEdge(id) {
@@ -452,18 +462,37 @@ function refreshGroupSelects() {
   }
 }
 
+function fillEndpointSelect(sel, selected) {
+  sel.innerHTML = "";
+  const atores = document.createElement("optgroup");
+  atores.label = "Atores";
+  for (const n of state.nodes) {
+    const o = document.createElement("option");
+    o.value = n.id;
+    o.textContent = n.name.replace(/\n/g, " ");
+    atores.appendChild(o);
+  }
+  if (state.nodes.length) sel.appendChild(atores);
+
+  const grupos = document.createElement("optgroup");
+  grupos.label = "Grupos";
+  for (const g of state.groups) {
+    const o = document.createElement("option");
+    o.value = g.id;
+    o.textContent = g.name.replace(/\n/g, " ");
+    grupos.appendChild(o);
+  }
+  if (state.groups.length) sel.appendChild(grupos);
+
+  const valid =
+    state.nodes.some((n) => n.id === selected) || state.groups.some((g) => g.id === selected);
+  if (valid) sel.value = selected;
+}
+
 function refreshNodeSelects() {
   for (const id of ["#rel-origem", "#rel-destino"]) {
     const sel = $(id);
-    const prev = sel.value;
-    sel.innerHTML = "";
-    for (const n of state.nodes) {
-      const o = document.createElement("option");
-      o.value = n.id;
-      o.textContent = n.name;
-      sel.appendChild(o);
-    }
-    if (state.nodes.some((n) => n.id === prev)) sel.value = prev;
+    fillEndpointSelect(sel, sel.value);
   }
 }
 
@@ -511,14 +540,12 @@ function refreshListaRelacoes() {
   ul.innerHTML = "";
   if (!state.edges.length) return void (ul.innerHTML = `<div class="empty">Nenhuma relação ainda.</div>`);
   for (const e of state.edges) {
-    const s = state.nodes.find((n) => n.id === e.source);
-    const t = state.nodes.find((n) => n.id === e.target);
     const tag = e.estado === "reforcada" ? "⏫ " : e.estado === "removida" ? "✕ " : "";
     ul.appendChild(
       liItem({
         color: e.color,
         label: tag + (e.label || "(sem rótulo)"),
-        sub: `${s ? s.name : "?"} ${e.bidir ? "↔" : "→"} ${t ? t.name : "?"}`,
+        sub: `${endpointName(e.source)} ${e.bidir ? "↔" : "→"} ${endpointName(e.target)}`,
         onFocus: () => focusEdge(e.id),
         onDelete: () => {
           removeEdge(e.id);
@@ -651,6 +678,18 @@ function openInspector(el) {
     $("#inspector-title").textContent = "Relação";
     const edge = state.edges.find((e) => e.id === el.id());
     if (!edge) return;
+    body.appendChild(
+      field(
+        "Origem",
+        selectEndpoint(edge.source, (v) => (edge.source = v))
+      )
+    );
+    body.appendChild(
+      field(
+        "Destino",
+        selectEndpoint(edge.target, (v) => (edge.target = v))
+      )
+    );
     body.appendChild(field("Rótulo", inputText(edge.label, (v) => (edge.label = v))));
     body.appendChild(field("Cor", inputColor(edge.color, (v) => (edge.color = v))));
     body.appendChild(
@@ -738,6 +777,12 @@ function selectGroup(value, onChange) {
     s.appendChild(o);
   }
   s.value = value || "";
+  s.addEventListener("change", () => onChange(s.value));
+  return s;
+}
+function selectEndpoint(value, onChange) {
+  const s = document.createElement("select");
+  fillEndpointSelect(s, value);
   s.addEventListener("change", () => onChange(s.value));
   return s;
 }
@@ -829,7 +874,11 @@ function bindForms() {
     const source = $("#rel-origem").value;
     const target = $("#rel-destino").value;
     if (!source || !target) {
-      alert("Cadastre pelo menos dois atores antes de criar uma relação.");
+      alert("Cadastre pelo menos um ator ou grupo para origem e destino.");
+      return;
+    }
+    if (source === target) {
+      alert("Origem e destino devem ser diferentes.");
       return;
     }
     addEdge({

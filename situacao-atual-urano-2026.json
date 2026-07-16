@@ -1,0 +1,398 @@
+{
+  "groups": [
+    {
+      "id": "g_canastra",
+      "name": "CANASTRA",
+      "color": "#C8E6C9"
+    },
+    {
+      "id": "g_vale",
+      "name": "VALE DO RIO GRANDE",
+      "color": "#F5E6C8"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_titulo",
+      "name": "SITUAÇÃO ATUAL — DIAGRAMA DE RELAÇÕES",
+      "group": null,
+      "color": "#0F172A",
+      "shape": "round-rectangle",
+      "x": 620,
+      "y": 40
+    },
+    {
+      "id": "n_subtitulo",
+      "name": "Ambiente Operacional URANO 2026 | perspectiva do País Azul",
+      "group": null,
+      "color": "#334155",
+      "shape": "round-rectangle",
+      "x": 620,
+      "y": 95
+    },
+    {
+      "id": "n_limitrofes",
+      "name": "PAÍSES\nLIMÍTROFES",
+      "group": null,
+      "color": "#94A3B8",
+      "shape": "ellipse",
+      "x": 620,
+      "y": 180
+    },
+    {
+      "id": "n_amarelo",
+      "name": "PAÍS\nAMARELO",
+      "group": null,
+      "color": "#B8860B",
+      "shape": "ellipse",
+      "x": 160,
+      "y": 320
+    },
+    {
+      "id": "n_azul",
+      "name": "PAÍS\nAZUL",
+      "group": null,
+      "color": "#1B3A5F",
+      "shape": "ellipse",
+      "x": 340,
+      "y": 380
+    },
+    {
+      "id": "n_vermelho",
+      "name": "PAÍS\nVERMELHO",
+      "group": null,
+      "color": "#9B1B1B",
+      "shape": "ellipse",
+      "x": 1080,
+      "y": 340
+    },
+    {
+      "id": "n_milicias",
+      "name": "GRUPOS ORGANIZADOS\n/ MILÍCIAS",
+      "group": "g_canastra",
+      "color": "#E53935",
+      "shape": "ellipse",
+      "x": 680,
+      "y": 280
+    },
+    {
+      "id": "n_pop_azulina",
+      "name": "POPULAÇÃO AZULINA\nEM CANASTRA",
+      "group": "g_canastra",
+      "color": "#1B3A5F",
+      "shape": "ellipse",
+      "x": 560,
+      "y": 400
+    },
+    {
+      "id": "n_etnia_roxa",
+      "name": "ETNIA ROXA\nEM CANASTRA\n\n(território contestado\nsob controle de Vermelho)",
+      "group": "g_canastra",
+      "color": "#6B21A8",
+      "shape": "ellipse",
+      "x": 800,
+      "y": 400
+    },
+    {
+      "id": "n_pop_afetada",
+      "name": "POPULAÇÃO AFETADA\n/ REFUGIADOS",
+      "group": "g_vale",
+      "color": "#B8860B",
+      "shape": "ellipse",
+      "x": 560,
+      "y": 620
+    },
+    {
+      "id": "n_org_criminosas",
+      "name": "ORGANIZAÇÕES\nCRIMINOSAS",
+      "group": "g_vale",
+      "color": "#9A3412",
+      "shape": "ellipse",
+      "x": 780,
+      "y": 640
+    },
+    {
+      "id": "n_nota_violencia",
+      "name": "violência /\nexploração do vácuo",
+      "group": "g_vale",
+      "color": "#7F1D1D",
+      "shape": "round-rectangle",
+      "x": 700,
+      "y": 740
+    },
+    {
+      "id": "n_golfo",
+      "name": "PAÍSES DO\nGOLFO PÉRSICO",
+      "group": null,
+      "color": "#374151",
+      "shape": "ellipse",
+      "x": 120,
+      "y": 680
+    },
+    {
+      "id": "n_oi_tij",
+      "name": "OI / TIJ",
+      "group": null,
+      "color": "#6B7280",
+      "shape": "ellipse",
+      "x": 280,
+      "y": 600
+    },
+    {
+      "id": "n_mulato",
+      "name": "MULATO",
+      "group": null,
+      "color": "#78350F",
+      "shape": "ellipse",
+      "x": 1080,
+      "y": 680
+    },
+    {
+      "id": "n_base",
+      "name": "Base: MD30-M-01, Vol. 2, 5.2.3.4;\nCompêndio NE 2025, NE 011;\nCenário, LEA, DPED e PEECFA 2026.",
+      "group": null,
+      "color": "#1E293B",
+      "shape": "round-rectangle",
+      "x": 980,
+      "y": 820
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_01",
+      "source": "n_amarelo",
+      "target": "n_limitrofes",
+      "label": "neutralidade / restrição territorial",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": true,
+      "estado": "normal"
+    },
+    {
+      "id": "e_02",
+      "source": "n_amarelo",
+      "target": "n_azul",
+      "label": "Dependência energética",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_03",
+      "source": "n_amarelo",
+      "target": "g_canastra",
+      "label": "Interesse energético",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_04",
+      "source": "n_vermelho",
+      "target": "g_canastra",
+      "label": "Interesse energético",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_05",
+      "source": "n_azul",
+      "target": "n_vermelho",
+      "label": "contencioso territorial e tensão político-militar",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": true,
+      "estado": "reforcada"
+    },
+    {
+      "id": "e_06",
+      "source": "n_vermelho",
+      "target": "g_canastra",
+      "label": "hostilidades",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_07",
+      "source": "n_amarelo",
+      "target": "n_milicias",
+      "label": "neutralização",
+      "color": "#C53030",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_08",
+      "source": "n_vermelho",
+      "target": "n_milicias",
+      "label": "apoio velado / coordenação",
+      "color": "#2B6CB0",
+      "style": "dashed",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_09",
+      "source": "n_milicias",
+      "target": "n_pop_azulina",
+      "label": "intimidação e violência",
+      "color": "#C53030",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_10",
+      "source": "n_azul",
+      "target": "n_pop_azulina",
+      "label": "proteção / apoio político",
+      "color": "#2B6CB0",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_11",
+      "source": "n_pop_azulina",
+      "target": "n_azul",
+      "label": "pedido por proteção e reintegração",
+      "color": "#2B6CB0",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_12",
+      "source": "n_azul",
+      "target": "g_vale",
+      "label": "assistência interagências",
+      "color": "#2B6CB0",
+      "style": "dashed",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_13",
+      "source": "n_oi_tij",
+      "target": "n_pop_afetada",
+      "label": "assistência humanitária",
+      "color": "#2B6CB0",
+      "style": "dashed",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_14",
+      "source": "n_org_criminosas",
+      "target": "n_pop_afetada",
+      "label": "",
+      "color": "#C53030",
+      "style": "dashed",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_15",
+      "source": "n_vermelho",
+      "target": "n_org_criminosas",
+      "label": "combate",
+      "color": "#C53030",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_16",
+      "source": "n_azul",
+      "target": "n_org_criminosas",
+      "label": "campanha de desinformação",
+      "color": "#C53030",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_17",
+      "source": "n_org_criminosas",
+      "target": "n_nota_violencia",
+      "label": "",
+      "color": "#C53030",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_18",
+      "source": "n_golfo",
+      "target": "n_azul",
+      "label": "dependência energética",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_19",
+      "source": "n_oi_tij",
+      "target": "n_azul",
+      "label": "gestões diplomáticas / pleito",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_20",
+      "source": "n_oi_tij",
+      "target": "n_amarelo",
+      "label": "Direito Internacional",
+      "color": "#2B6CB0",
+      "style": "dashed",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_21",
+      "source": "n_oi_tij",
+      "target": "g_canastra",
+      "label": "Direito Internacional",
+      "color": "#2B6CB0",
+      "style": "dashed",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_22",
+      "source": "n_vermelho",
+      "target": "n_mulato",
+      "label": "",
+      "color": "#111827",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    },
+    {
+      "id": "e_23",
+      "source": "n_vermelho",
+      "target": "n_mulato",
+      "label": "PRODE / material bélico",
+      "color": "#2B6CB0",
+      "style": "solid",
+      "bidir": false,
+      "estado": "normal"
+    }
+  ],
+  "types": [
+    { "name": "Apoio / cooperação", "color": "#2B6CB0" },
+    { "name": "Antagonismo / ameaça", "color": "#C53030" },
+    { "name": "Influência / dependência", "color": "#111827" }
+  ],
+  "idSeq": 100
+}
